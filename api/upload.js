@@ -1,10 +1,10 @@
-const multer = require('multer');
-const sharp = require('sharp');
-const axios = require('axios');
-const FormData = require('form-data');
-const https = require('https');
-const cheerio = require('cheerio');
 
+import multer from 'multer';
+import sharp from 'sharp';
+import axios from 'axios';
+import FormData from 'form-data';
+import https from 'https';
+import cheerio from 'cheerio';
 
 function runMiddleware(req, res, fn) {
   return new Promise((resolve, reject) => {

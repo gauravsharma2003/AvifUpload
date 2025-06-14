@@ -1,6 +1,7 @@
 {
     "name": "vercel-image-optimizer",
     "version": "1.0.0",
+    "type": "module",
     "description": "A serverless API to convert an image to AVIF and upload it.",
     "dependencies": {
       "axios": "^1.7.2",
