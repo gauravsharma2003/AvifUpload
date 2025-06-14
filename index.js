@@ -1,8 +1,8 @@
 import express from 'express';
 import multer from 'multer';
-import sharp from 'sharp';
 import cors from 'cors';
 import { postimg } from './utils/postimg.js';
+import { uploadToCloudinary } from './utils/cloud.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,21 +28,24 @@ app.post('/', upload.single('image'), async (req, res) => {
   console.log(`Received file: ${req.file.originalname}, Size: ${Math.round(req.file.size / 1024)} KB`);
 
   try {
-    console.log('Converting to AVIF...');
-    const avifBuffer = await sharp(req.file.buffer)
-      .avif({ quality: 50, effort: 4 })
-      .toBuffer();
+    console.log('Uploading to Cloudinary for AVIF conversion...');
+    const cloudinaryResult = await uploadToCloudinary(req.file.buffer, req.file.originalname);
     
-    console.log(`Conversion successful. New AVIF size: ${Math.round(avifBuffer.length / 1024)} KB`);
-    console.log('Uploading optimized image to postimages.org...');
+    console.log('Downloading AVIF version from Cloudinary...');
+    const avifResponse = await fetch(cloudinaryResult.avif_url);
+    const avifBuffer = await avifResponse.arrayBuffer();
     
-    const uploadResult = await postimg(avifBuffer, 'optimized.avif');
+    console.log(`AVIF conversion successful. Size: ${Math.round(avifBuffer.byteLength / 1024)} KB`);
+    console.log('Uploading AVIF to postimages.org...');
+    
+    const postimgResult = await postimg(Buffer.from(avifBuffer), 'optimized.avif');
     
     return res.status(200).json({
       success: true,
       originalSizeKB: Math.round(req.file.size / 1024),
-      optimizedSizeKB: Math.round(avifBuffer.length / 1024),
-      ...uploadResult
+      optimizedSizeKB: Math.round(avifBuffer.byteLength / 1024),
+      cloudinary_avif_url: cloudinaryResult.avif_url,
+      postimg_url: postimgResult.directLink,
     });
 
   } catch (error) {
