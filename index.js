@@ -1,25 +1,17 @@
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
-import axios from 'axios';
-import FormData from 'form-data';
-import * as cheerio from 'cheerio';
 import cors from 'cors';
+import { uploadToCloudinary } from './utils/cloud.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: { fileSize: 15 * 1024 * 1024 },
 });
-
-//maybe not needed 
-// const httpsAgent = new https.Agent({
-//   rejectUnauthorized: false,
-// });
 
 app.use(cors());
 
@@ -37,57 +29,18 @@ app.post('/', upload.single('image'), async (req, res) => {
       .toBuffer();
     
     console.log(`Conversion successful. New AVIF size: ${Math.round(avifBuffer.length / 1024)} KB`);
-    console.log('Uploading optimized image to postimages.org...');
+    console.log('Uploading optimized image to Cloudinary...');
     
-    const uploadForm = new FormData();
-    const sessionId = `${new Date().getTime()}.${Math.random()}`;
-    uploadForm.append('optsize', '0');
-    uploadForm.append('expire', '0');
-    uploadForm.append('numfiles', '1');
-    uploadForm.append('upload_session', sessionId);
-    uploadForm.append('file', avifBuffer, {
-      filename: 'optimized.avif',
-      contentType: 'image/avif',
-    });
-
-    const uploadResponse = await axios.post('https://postimages.org/json/rr', uploadForm, {
-      headers: {
-        ...uploadForm.getHeaders(),
-        'Accept': 'application/json',
-        'User-Agent': 'Node.js-Image-Optimizer/1.0',
-      }
-      // httpsAgent: httpsAgent, 
-    });
-
-    if (!uploadResponse.data || uploadResponse.data.status !== 'OK') {
-      console.error('Postimages upload failed:', uploadResponse.data);
-      throw new Error('The external image hosting service failed to process the file.');
-    }
+    const cloudinaryResponse = await uploadToCloudinary(avifBuffer, 'optimized.avif');
     
-    const pageUrl = uploadResponse.data.url;
-    console.log(`Upload successful. Now scraping page for direct link: ${pageUrl}`);
-
-    const pageHtmlResponse = await axios.get(pageUrl);
-    const $ = cheerio.load(pageHtmlResponse.data);
-    const directImageUrl = $('meta[property="og:image"]').attr('content');
-
-    if (!directImageUrl) {
-      console.warn('Could not scrape the direct image link (og:image).');
-      return res.status(200).json({
-        success: true,
-        warning: 'Could not find the direct image link, returning page URL instead.',
-        pageUrl: pageUrl,
-      });
-    }
-    
-    console.log(`Successfully extracted direct link: ${directImageUrl}`);
+    console.log('Upload successful to Cloudinary');
 
     return res.status(200).json({
       success: true,
       originalSizeKB: Math.round(req.file.size / 1024),
       optimizedSizeKB: Math.round(avifBuffer.length / 1024),
-      directLink: directImageUrl,
-      pageUrl: pageUrl, //not needed but why not
+      directLink: cloudinaryResponse.secure_url,
+      pageUrl: cloudinaryResponse.url,
     });
 
   } catch (error) {
@@ -96,7 +49,6 @@ app.post('/', upload.single('image'), async (req, res) => {
   }
 });
 
-// module.exports = app;
-app.listen(PORT, ()=>{
-  console.log("Hello");
-})
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
