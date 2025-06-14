@@ -22,7 +22,7 @@ const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
 });
 
-app.post('/upload', upload.single('image'), async (req, res) => {
+app.post('/', upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No image file was provided in the `image` field.' });
   }
@@ -95,6 +95,4 @@ app.post('/upload', upload.single('image'), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+module.exports = app;
