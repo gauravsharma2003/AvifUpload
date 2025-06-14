@@ -1,11 +1,10 @@
-const express = require('express');
-const multer = require('multer');
-const sharp = require('sharp');
-const axios = require('axios');
-const FormData = require('form-data');
-const https = require('https');
-const cheerio = require('cheerio');
-
+import express from 'express';
+import multer from 'multer';
+import sharp from 'sharp';
+import axios from 'axios';
+import FormData from 'form-data';
+import * as cheerio from 'cheerio';
+import cors from 'cors';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,9 +17,11 @@ const upload = multer({
 });
 
 //maybe not needed 
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false,
-});
+// const httpsAgent = new https.Agent({
+//   rejectUnauthorized: false,
+// });
+
+app.use(cors());
 
 app.post('/', upload.single('image'), async (req, res) => {
   if (!req.file) {
@@ -54,8 +55,8 @@ app.post('/', upload.single('image'), async (req, res) => {
         ...uploadForm.getHeaders(),
         'Accept': 'application/json',
         'User-Agent': 'Node.js-Image-Optimizer/1.0',
-      },
-      httpsAgent: httpsAgent, 
+      }
+      // httpsAgent: httpsAgent, 
     });
 
     if (!uploadResponse.data || uploadResponse.data.status !== 'OK') {
@@ -66,7 +67,7 @@ app.post('/', upload.single('image'), async (req, res) => {
     const pageUrl = uploadResponse.data.url;
     console.log(`Upload successful. Now scraping page for direct link: ${pageUrl}`);
 
-    const pageHtmlResponse = await axios.get(pageUrl, { httpsAgent: httpsAgent });
+    const pageHtmlResponse = await axios.get(pageUrl);
     const $ = cheerio.load(pageHtmlResponse.data);
     const directImageUrl = $('meta[property="og:image"]').attr('content');
 
@@ -95,4 +96,7 @@ app.post('/', upload.single('image'), async (req, res) => {
   }
 });
 
-module.exports = app;
+// module.exports = app;
+app.listen(PORT, ()=>{
+  console.log("Hello");
+})
