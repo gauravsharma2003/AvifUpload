@@ -16,6 +16,10 @@ const upload = multer({
 // const httpsAgent = new https.Agent({
 //   rejectUnauthorized: false,
 // });
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Headers', 'Access-Control-Allow-Origin');
+  next();
+});
 
 app.use(cors());
 
