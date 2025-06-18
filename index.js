@@ -2,7 +2,6 @@ import express from 'express';
 import multer from 'multer';
 import cors from 'cors';
 import { postimg } from './utils/postimg.js';
-import { uploadToCloudinary } from './utils/cloud.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -28,26 +27,14 @@ app.post('/', upload.single('image'), async (req, res) => {
   console.log(`Received file: ${req.file.originalname}, Size: ${Math.round(req.file.size / 1024)} KB`);
 
   try {
-    console.log('Uploading to Cloudinary for AVIF conversion...');
-    const cloudinaryResult = await uploadToCloudinary(req.file.buffer, req.file.originalname);
-    
-    console.log('Downloading AVIF version from Cloudinary...');
-    const avifResponse = await fetch(cloudinaryResult.avif_url);
-    const avifBuffer = await avifResponse.arrayBuffer();
-    
-    console.log(`AVIF conversion successful. Size: ${Math.round(avifBuffer.byteLength / 1024)} KB`);
-    console.log('Uploading AVIF to postimages.org...');
-    
-    const postimgResult = await postimg(Buffer.from(avifBuffer), 'optimized.avif');
-    
+    console.log('Uploading image to postimages.org...');
+    const postimgResult = await postimg(req.file.buffer, req.file.originalname);
+
     return res.status(200).json({
       success: true,
       originalSizeKB: Math.round(req.file.size / 1024),
-      optimizedSizeKB: Math.round(avifBuffer.byteLength / 1024),
-      cloudinary_avif_url: cloudinaryResult.avif_url,
-      postimg_url: postimgResult.directLink,
+      ...postimgResult
     });
-
   } catch (error) {
     console.error('An error occurred in the process:', error);
     return res.status(500).json({ success: false, error: 'Failed to process the image.', details: error.message });
